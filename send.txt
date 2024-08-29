@@ -1,0 +1,15 @@
+#
+# These files aren't fully sent to the client because they
+# should never change. Instead we send the CRC of this file
+# so the client can load their version - and we know it's kewl.
+#
+gamemodes\trashcompactor\gamemode\modules\sh_cami.lua
+gamemodes\trashcompactor\gamemode\shared.lua
+gamemodes\trashcompactor\gamemode\sh_privileges.lua
+gamemodes\trashcompactor\gamemode\sh_config.lua
+gamemodes\trashcompactor\gamemode\sh_team.lua
+gamemodes\trashcompactor\gamemode\sh_trashman.lua
+gamemodes\trashcompactor\gamemode\sh_rounds.lua
+gamemodes\trashcompactor\gamemode\cl_init.lua
+gamemodes\trashcompactor\gamemode\cl_scoreboard.lua
+gamemodes\trashcompactor\gamemode\cl_configmenu.lua
