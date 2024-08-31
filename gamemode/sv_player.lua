@@ -18,43 +18,26 @@ function GM:PlayerLoadout( ply )
     return true
 end
 
+function GM:PlayerSelectTeamSpawn( TeamID, ply )
+    local SpawnPoints = team.GetSpawnPoints( TeamID )
+    if ( #SpawnPoints == 0 ) then return end
 
-function GM:PlayerSelectSpawn( ply )
-    local TrashManSpawns = ents.FindByClass("info_player_terrorist")
-    local VictimSpawns = ents.FindByClass("info_player_counterterrorist")
-    local SpectatorSpawns = ents.FindByClass("info_player_start")
+    local ChosenSpawnPoint = nil
+    local SuitableSpawnPoints = {}
 
-    if ply:IsTrashMan() then
-        for k, spawn in pairs( TrashManSpawns ) do
-            if ( IsValid(spawn) and GAMEMODE:IsSpawnpointSuitable(ply, spawn, false)) then
-                return spawn
-            end
+    for _, SpawnPoint in ipairs( SpawnPoints ) do
+        if GAMEMODE:IsSpawnpointSuitable( ply, SpawnPoint, true ) then
+            table.insert( SuitableSpawnPoints, SpawnPoint )
         end
-        return TrashManSpawns[1]
-
-    elseif ply:IsVictim() then
-        for k, spawn in pairs( VictimSpawns ) do
-            if ( IsValid(spawn) and GAMEMODE:IsSpawnpointSuitable(ply, spawn, false)) then
-                return spawn
-            end
-        end
-        return VictimSpawns[1]
-
-    elseif ( ply:Team() == TEAM_SPECTATOR or ply:Team() == TEAM_UNASSIGNED ) then
-        for k, spawn in pairs( SpectatorSpawns ) do
-            if ( IsValid(spawn) and GAMEMODE:IsSpawnpointSuitable(ply, spawn, false)) then
-                return spawn
-            end
-        end
-        return SpectatorSpawns[1]
     end
 
+    return ChosenSpawnPoint[ math.random(1, #SuitableSpawnPoints) ]
 end
 
 
 function GM:PlayerSpawn( ply )
     if (ply:Team() == TEAM_SPECTATOR) then
-        GAMEMODE:PlayerSpawnAsSpectator( ply )
+        self:PlayerSpawnAsSpectator( ply )
         return
     end
 
@@ -67,15 +50,11 @@ end
 
 
 function GM:PlayerInitialSpawn( ply )
-    if ( #PROP_LIST == 0 ) then
-        SaveAllPropLocations()
-        SpawnAllProps()
-    end
-
     ply:SetCustomCollisionCheck( true )
     ply:AllowFlashlight( true )
 
-    if GAMEMODE:CanJoin(ply) then
+    local CanJoin = hook.Call("PlayerCanJoin", GAMEMODE, ply)
+    if ( CanJoin == true ) then
         ply:SetTeam( TEAM_VICTIMS )
     else
         ply:SetTeam( TEAM_SPECTATOR )
@@ -87,7 +66,7 @@ function GM:PostPlayerDeath( ply )
     ply:CreateRagdoll()
 
     if ply:IsTrashMan() then
-        GAMEMODE:TrashManDied(ply)
+        hook.Call("TrashManDied", GAMEMODE, ply)
     elseif ply:IsVictim() then
         ply:SetTeam( TEAM_SPECTATOR )
     end

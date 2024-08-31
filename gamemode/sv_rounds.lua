@@ -1,112 +1,173 @@
-GM.TrashManAFKTimer = 0
-GM.TrashManAFK = 20
-GM.TrashManIsAFK = true
+--[[------------------------------------------------
+              Trash Compactor - Rounds
+------------------------------------------------]]--
 
-GM.RoundTimer = 0
-function GM.RoundThink()
-    if GAMEMODE.CurrentRoundStatus == ROUND_WAITING then
-        -- Initial check --
-        if #player.GetAll() >= GAMEMODE.Config.MinumumPlayersNeeded then
-            GAMEMODE.CurrentRoundStatus = ROUND_STARTING
-            GAMEMODE.RoundTimer = CurTime() + GAMEMODE.RoundStarting
+local RoundTimer = 0
+local FirstTime = true
 
-            GAMEMODE:TrashCompactorRound(ROUND_STARTING)
+--[[------------------------
+        Trash Man AFK
+------------------------]]--
+
+local TrashManAFKTimer = 0
+local TrashManAFK = 20
+local TrashManIsAFK = true
+
+
+
+--[[------------------------
+         Round Hooks
+------------------------]]--
+
+function GM:RoundWaiting() end
+function GM:PostRoundWaiting()
+    for k, ply in ipairs(player.GetAll()) do
+
+        if ply:Team() == TEAM_VICTIMS and not ply:Alive() then
+            ply:Spawn()
+
+        elseif ply:Team() == TEAM_SPECTATOR then
+            ply:SetTeam(TEAM_VICTIMS)
+            ply:Spawn()
+        end
+
+    end
+end
+
+function GM:RoundStarting()
+    local ply = NULL
+
+    if self.Config.UseTrashmanQueue then
+        ply = TrashCompactor.GetNextPlayerInQueue()
+    else
+        ply = player.GetAll()[ math.random(1, #player.GetAll()) ]
+    end
+
+    TrashCompactor.SetTrashman(ply)
+end
+function GM:PostRoundStarting() end
+
+function GM:RoundRunning() end
+function GM:PostRoundRunning() end
+
+function GM:RoundEnded() end
+function GM:PostRoundEnded()
+    game.CleanUpMap()
+
+    for k, ply in ipairs(player.GetAll()) do
+        ply:KillSilent()
+        ply:SetTeam(TEAM_VICTIMS)
+    end
+end
+
+
+
+--[[------------------------
+         Round Logic
+------------------------]]--
+
+hook.Add("Think", "RoundLogic", function()
+    if ( GAMEMODE.CurrentRoundStatus == ROUND_WAITING ) then
+
+        if FirstTime then
+            GAMEMODE:RoundWaiting()
+            FirstTime = false
+        end
+
+        if #player.GetAll() >= 2 then
+            GAMEMODE:PostRoundWaiting()
             GAMEMODE:BeginRound()
+
+            FirstTime = true
+            TrashCompactor.SetRoundStatus(ROUND_STARTING)
+            RoundTimer = CurTime() + 10
         end
 
+    elseif ( GAMEMODE.CurrentRoundStatus == ROUND_STARTING ) then
 
-        -- Custom stuff --
-        for k, ply in ipairs(player.GetAll()) do
-
-            if ply:Team() == TEAM_VICTIMS and not ply:Alive() then
-                ply:Spawn()
-
-            elseif ply:Team() == TEAM_SPECTATOR then
-                ply:SetTeam(TEAM_VICTIMS)
-                ply:Spawn()
-            end
-
+        if FirstTime then
+            GAMEMODE:RoundStarting()
+            FirstTime = false
         end
 
+        if RoundTimer < CurTime() then
+            GAMEMODE:PostRoundStarting()
 
-        local ForcePlayer = hook.Call("GetNextTrashMan", GAMEMODE)
-        if IsValid(ForcePlayer) then
-            ForcePlayer:SetTeam(TEAM_TRASHMAN)
-        else
-            local ply = NULL
-            if GAMEMODE.Config.UseTrashmanQueue:GetBool() then
-                ply = GAMEMODE:GetNextPlayerInQueue()
-            else
-                ply = player.GetAll()[ math.random(1, #player.GetAll()) ]
-            end
-
-            ply:SetTeam(TEAM_TRASHMAN)
-            GAMEMODE:SetCurrentTrashMan(ply)
+            FirstTime = true
+            TrashCompactor.SetRoundStatus(ROUND_RUNNING)
+            RoundTimer = CurTime() + 120
         end
 
-    elseif GAMEMODE.CurrentRoundStatus == ROUND_STARTING then
-        -- Timer check --
-        if GAMEMODE.RoundTimer < CurTime() then
-            GAMEMODE.CurrentRoundStatus = ROUND_RUNNING
-            GAMEMODE.RoundTimer = CurTime() + GAMEMODE.Config.RoundRunning:GetInt()
+    elseif ( GAMEMODE.CurrentRoundStatus == ROUND_RUNNING ) then
 
-            GAMEMODE:TrashCompactorRound(ROUND_RUNNING)
-            GAMEMODE.TrashManAFKTimer = CurTime() + GAMEMODE.Config.TrashManAFK:GetInt()
+        if FirstTime then
+            GAMEMODE:RoundRunning()
+            FirstTime = false
         end
 
-    elseif GAMEMODE.CurrentRoundStatus == ROUND_RUNNING then
-        -- Timer check --
-        if GAMEMODE.RoundTimer < CurTime() or GAMEMODE.RoundEnded then
-            GAMEMODE.CurrentRoundStatus = ROUND_ENDED
-            GAMEMODE.RoundTimer = CurTime() + GAMEMODE.Config.RoundEnding:GetInt()
+        if RoundTimer < CurTime() or GAMEMODE.RoundEnded then
+            GAMEMODE:PostRoundRunning()
 
-            GAMEMODE:TrashCompactorRound(ROUND_ENDED)
+            FirstTime = true
+            TrashCompactor.SetRoundStatus(ROUND_ENDED)
+            RoundTimer = CurTime() + 10
+
+            return
         end
 
+        if TrashManIsAFK then
+            TrashManAFKTimer = TrashManAFKTimer + 1
 
-        -- Custom stuff --
-        if GAMEMODE.TrashManIsAFK and GAMEMODE.TrashManAFKTimer < CurTime() then
-            -- If was afk and timer is up, kill him
-            local trashman = GAMEMODE:GetTrashMan()
-            if IsValid(trashman) then
-                trashman:Kill()
+            if TrashManAFKTimer >= TrashManAFK then
+                FirstTime = true
+                TrashCompactor.SetRoundStatus(ROUND_ENDED)
+                RoundTimer = CurTime() + 10
+
+                GAMEMODE:EndRound(TEAM_VICTIMS)
+
+                return
             end
         end
 
-        -- Check if there are any players left
-        local victims = team.NumPlayers(TEAM_VICTIMS)
-        if victims == 0 then
+        if #TrashCompactor.GetVictims() == 0 then
+            FirstTime = true
+            TrashCompactor.SetRoundStatus(ROUND_ENDED)
+            RoundTimer = CurTime() + 10
+
             GAMEMODE:EndRound(TEAM_TRASHMAN)
         end
 
-    elseif GAMEMODE.CurrentRoundStatus == ROUND_ENDED then
-        local victims = team.NumPlayers(TEAM_VICTIMS)
-        if victims ~= 0 then
-            GAMEMODE:VictimsWin()
+    elseif ( GAMEMODE.CurrentRoundStatus == ROUND_ENDED ) then
+
+        if FirstTime then
+            GAMEMODE:RoundEnded()
+            FirstTime = false
         end
 
-        if GAMEMODE.RoundTimer < CurTime() then
-            GAMEMODE.CurrentRoundStatus = ROUND_WAITING
-            GAMEMODE.RoundTimer = CurTime() + GAMEMODE.Config.RoundWaiting:GetInt()
+        if RoundTimer < CurTime() then
+            GAMEMODE:PostRoundEnded()
 
-            GAMEMODE:TrashCompactorRound(ROUND_WAITING)
-
-
-            -- Custom stuff --
-            game.CleanUpMap()
-
-            GAMEMODE:EndRound(TEAM_VICTIMS)
-            for k, ply in ipairs(player.GetAll()) do
-                ply:SetTeam(TEAM_VICTIMS)
-                ply:Spawn()
-            end
+            FirstTime = true
+            TrashCompactor.SetRoundStatus(ROUND_WAITING)
+            RoundTimer = CurTime() + 10
         end
     end
-end
-hook.Add("Think", "RoundThink", GM.RoundThink)
+end)
+
+
+
+--[[------------------------
+         Extra Hooks
+------------------------]]--
+
+hook.Add("PlayerCanJoin", "TrashCompactor.PlayerCanJoin", function(ply)
+    if GAMEMODE.CurrentRoundStatus == ROUND_WAITING then
+        return true
+    end
+end)
 
 function GM:TrashManDied(ply)
-    GAMEMODE:EndRound()
+    GAMEMODE:EndRound(TEAM_VICTIMS)
     ply:SetTeam(TEAM_SPECTATOR)
 end
 

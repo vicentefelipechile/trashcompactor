@@ -3,19 +3,18 @@ if SERVER then
     util.AddNetworkString("TrashCompactor.RemoveQueue")
 end
 
-GM.TrashMan = GM.TrashMan or {}
-GM.TrashMan.Queue = GM.TrashMan.Queue or {}
+local CurrentQueue = {}
 
-function GM:GetQueue()
-    return GM.TrashMan.Queue
+function TrashCompactor.GetQueue()
+    return CurrentQueue
 end
 
 
-function GM:AddPlayerToQeue(ply)
+function TrashCompactor.AddPlayerToQeue(ply)
     if ply:Team() == TEAM_TRASHMAN then return end
-    if table.HasValue(GM.TrashMan.Queue, ply) then return end -- don't add the same player twice
+    if table.HasValue(CurrentQueue, ply) then return end -- don't add the same player twice
 
-    table.insert(GM.TrashMan.Queue, ply)
+    table.insert(CurrentQueue, ply)
 
     if CLIENT then return end
 
@@ -25,10 +24,10 @@ function GM:AddPlayerToQeue(ply)
 end
 
 
-function GM:RemovePlayerFromQueue(ply)
-    for k, v in pairs(GM.TrashMan.Queue) do
+function TrashCompactor.RemovePlayerFromQueue(ply)
+    for k, v in pairs(CurrentQueue) do
         if v == ply then
-            table.remove(GM.TrashMan.Queue, k) -- i know, this isn't the best way to do this, but it works
+            table.remove(CurrentQueue, k) -- i know, this isn't the best way to do this, but it works
         end
     end
 
@@ -40,12 +39,12 @@ function GM:RemovePlayerFromQueue(ply)
 end
 
 
-function GM:GetNextPlayerInQueue()
-    if #self.TrashMan.Queue == 0 then
+function TrashCompactor.GetNextPlayerInQueue()
+    if #CurrentQueue == 0 then
         return player.GetAll()[ math.random(1, #player.GetAll()) ]
     end
 
-    return table.remove(self.TrashMan.Queue, 1)
+    return table.remove(CurrentQueue, 1)
 end
 
 
@@ -53,13 +52,13 @@ if CLIENT then
     net.Receive("TrashCompactor.AddQueue", function(len, ply)
         if not IsValid(ply) then return end
 
-        GAMEMODE:AddPlayerToQeue(ply)
+        TrashCompactor.AddPlayerToQeue(ply)
     end)
 
 
     net.Receive("TrashCompactor.RemoveQueue", function(len, ply)
         if not IsValid(ply) then return end
 
-        GAMEMODE:RemovePlayerFromQueue(ply)
+        TrashCompactor.RemovePlayerFromQueue(ply)
     end)
 end
