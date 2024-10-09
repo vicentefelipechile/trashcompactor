@@ -1,9 +1,8 @@
 --[[------------------------------------------------
-              Trash Compactor - Rounds
+                Trash Compactor - Rounds
 ------------------------------------------------]]--
 
 if SERVER then
-    util.AddNetworkString("TrashCompactor.RoundStatus")
     util.AddNetworkString("TrashCompactor.RoundEnd")
     util.AddNetworkString("TrashCompactor.RoundBegin")
 end
@@ -17,11 +16,8 @@ ROUND_STARTING = 2
 ROUND_RUNNING = 3
 ROUND_ENDED = 4
 
--- SetGlobalInt("RoundStatus", ROUND_WAITING)
--- SetGlobalBool("RoundEnded", false)
-
-GM.CurrentRoundStatus = ROUND_WAITING
-GM.RoundEnded = false
+SetGlobalInt("RoundStatus", ROUND_WAITING)
+SetGlobalBool("RoundEnded", false)
 
 
 
@@ -30,21 +26,15 @@ GM.RoundEnded = false
 ------------------------]]--
 
 function GM:SetRoundStatus(status)
-    self.CurrentRoundStatus = status
-
-    if CLIENT then return end
-
-    net.Start("TrashCompactor.RoundStatus")
-        net.WriteUInt(status, TrashCompactor.DefaultUInt)
-    net.Broadcast()
+    SetGlobalInt("RoundStatus", status)
 end
 
 function GM:GetRoundStatus()
-    return self.CurrentRoundStatus
+    return GetGlobalInt("RoundStatus")
 end
 
 function GM:EndRound(WinnerTeam)
-    self.RoundEnded = true
+    SetGlobalBool("RoundEnded", true)
 
     if CLIENT then return end
 
@@ -54,7 +44,7 @@ function GM:EndRound(WinnerTeam)
 end
 
 function GM:BeginRound()
-    self.RoundEnded = false
+    SetGlobalBool("RoundEnded", false)
 
     if CLIENT then return end
 
@@ -68,7 +58,7 @@ function TrashCompactor.SetRoundStatus(status)
 end
 
 function TrashCompactor.GetRoundStatus()
-    return GetGlobalInt("RoundStatus")
+    return GAMEMODE:GetRoundStatus()
 end
 
 function TrashCompactor.GetRoundEnded()
@@ -82,10 +72,6 @@ end
 ------------------------]]--
 
 if CLIENT then
-    net.Receive("TrashCompactor.RoundStatus", function()
-        GAMEMODE:SetRoundStatus( net.ReadUInt(TrashCompactor.DefaultUInt) )
-    end)
-
     net.Receive("TrashCompactor.RoundEnd", function()
         GAMEMODE:EndRound( net.ReadUInt(TrashCompactor.DefaultUInt) )
     end)

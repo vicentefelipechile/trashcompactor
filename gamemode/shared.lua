@@ -1,7 +1,7 @@
 GM.Name 	= "Trash Compactor"
-GM.Author 	= "VictimofScience & Landmine752"
+GM.Author 	= "VictimofScience & Landmine752 & vicentefelipechile"
 GM.Email 	= ""
-GM.Website 	= "http://steamcommunity.com/id/VictimofScience/"
+GM.Website 	= "http://www.gmodstore.com"
 GM.Help		= "Beware the Trashman"
 
 DeriveGamemode( "sandbox" )

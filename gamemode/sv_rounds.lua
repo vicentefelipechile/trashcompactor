@@ -19,6 +19,7 @@ local TrashManIsAFK = true
          Round Hooks
 ------------------------]]--
 
+-- Phase 1: Waiting
 function GM:RoundWaiting() end
 function GM:PostRoundWaiting()
     for k, ply in ipairs(player.GetAll()) do
@@ -30,26 +31,35 @@ function GM:PostRoundWaiting()
             ply:SetTeam(TEAM_VICTIMS)
             ply:Spawn()
         end
-
     end
 end
 
+
+
+-- Phase 2: Starting
 function GM:RoundStarting()
     local ply = NULL
 
     if self.Config.UseTrashmanQueue then
-        ply = TrashCompactor.GetNextPlayerInQueue()
+        ply = TrashCompactor.GetNextPlayerQueue()
     else
         ply = player.GetAll()[ math.random(1, #player.GetAll()) ]
     end
 
     TrashCompactor.SetTrashman(ply)
 end
+
 function GM:PostRoundStarting() end
 
+
+
+-- Phase 3: Running
 function GM:RoundRunning() end
 function GM:PostRoundRunning() end
 
+
+
+-- Phase 4: Ended
 function GM:RoundEnded() end
 function GM:PostRoundEnded()
     game.CleanUpMap()
